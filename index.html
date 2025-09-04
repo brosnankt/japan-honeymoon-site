@@ -10,10 +10,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Superhuman Inspired Dark Theme (Dark Gray, Purple/Magenta Gradients, Vibrant Accents) -->
-    <!-- Application Structure Plan: The application is a multi-section hub controlled by a primary navigation bar. The 'Eating' section has been enhanced with a user-facing data entry feature, now pre-populated with a complete and sourced list from the user's Google Maps link. This makes the tool a personalized and accurate reflection of the user's research. The data is stored in a JavaScript array and rendered dynamically. This structure empowers the user to merge their own research with the provided information. -->
+    <!-- Application Structure Plan: The application is a multi-section hub. The key update is replacing the non-functional Amex Travel links with robust Google Hotels search links for FHR properties. This maintains the actionable nature of the planner while significantly improving reliability. The links are dynamically generated using pre-calculated dates and hotel names to provide a seamless user experience from planning to the booking research phase. -->
     <!-- Visualization & Content Choices: 
     - Main Navigation: Retains the same structure for navigating between high-level planning topics.
-    - Saved Places Feature: Report Info -> User's request to incorporate a Google Maps list accurately. Goal -> Allow user to view and manage their complete list of places with clear sourcing. Viz -> HTML Form for input, dynamically generated HTML cards for display. Interaction -> Form submission adds items to a JS array; a render function displays the array contents; delete buttons on each card remove items from the array and re-render. Justification -> This client-side CRUD pattern provides the requested functionality. The updated data and rendering now include a 'source' field for clarity as requested.
+    - Booking Links: Report Info -> User's request to fix broken booking links with a Google Hotels alternative. Goal -> Provide a reliable, one-click path to research and book hotels for specific dates. Viz/Method -> Dynamically generated `<a>` tags styled as buttons, now pointing to a Google Hotels search URL. Interaction -> Clicking opens a new tab with pre-filled search parameters (hotel name, check-in/out dates). Justification -> This directly addresses the user's issue, replacing a broken feature with a superior, more stable alternative.
     - All other visualizations and structures are retained.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
@@ -91,6 +91,19 @@
         .submit-button {
              background-image: linear-gradient(to right, #6d28d9, #d946ef);
              color: #ffffff;
+        }
+        .book-button {
+            background-color: #262626;
+            color: #A1A1AA;
+            border: 1px solid #404040;
+            transition: all 0.2s ease-in-out;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .book-button:hover {
+            color: #ffffff;
+            border-color: #6d28d9;
+            background-color: #6d28d9;
         }
     </style>
 </head>
@@ -344,7 +357,7 @@
         };
         
         let savedPlaces = [
-            { id: 1, name: 'Tsukiji Outer Market', city: 'Tokyo', category: 'Sightseeing', notes: 'Famous for fresh seafood and street food.', source: 'Japlan Google Maps List' },
+             { id: 1, name: 'Tsukiji Outer Market', city: 'Tokyo', category: 'Sightseeing', notes: 'Famous for fresh seafood and street food.', source: 'Japlan Google Maps List' },
             { id: 2, name: 'teamLab Planets TOKYO', city: 'Tokyo', category: 'Sightseeing', notes: 'Immersive digital art museum.', source: 'Japlan Google Maps List' },
             { id: 3, name: 'Shibuya Crossing', city: 'Tokyo', category: 'Sightseeing', notes: 'Iconic and busy intersection.', source: 'Japlan Google Maps List' },
             { id: 4, name: 'Jimbocho Glitch Coffee & Roasters', city: 'Tokyo', category: 'Cafe', notes: 'Specialty coffee shop.', source: 'Japlan Google Maps List' },
@@ -395,20 +408,30 @@
 
         function calculateAndPrepareData() {
             itineraryData.forEach(option => {
-                const nightsPerCity = {};
-                option.flow.forEach(step => {
-                    nightsPerCity[step.city] = (nightsPerCity[step.city] || 0) + step.nights;
-                });
-                option.nightsPerCity = nightsPerCity;
                 option.plans.forEach(plan => {
                     plan.totalCost = 0;
                     plan.hotelDetails = [];
-                    Object.entries(plan.hotels).forEach(([city, hotelName]) => {
-                        const nights = nightsPerCity[city];
+                    let currentDate = new Date('2025-11-13T12:00:00Z');
+
+                    option.flow.forEach(step => {
+                        const hotelName = plan.hotels[step.city];
                         const pricePerNight = hotelPrices[hotelName] || 0;
-                        const cost = nights * pricePerNight;
+                        const cost = step.nights * pricePerNight;
                         plan.totalCost += cost;
-                        plan.hotelDetails.push({ location: city, name: hotelName, cost: cost, fhr: hotelDescriptions[hotelName]?.source !== 'NYT Guide'});
+                        
+                        const checkIn = new Date(currentDate);
+                        currentDate.setDate(currentDate.getDate() + step.nights);
+                        const checkOut = new Date(currentDate);
+
+                        plan.hotelDetails.push({ 
+                            location: step.city + (step.label ? ` (${step.label})` : ''), 
+                            name: hotelName, 
+                            cost: cost, 
+                            fhr: hotelDescriptions[hotelName]?.source !== 'NYT Guide',
+                            dates: `${checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${checkOut.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+                            checkInDate: checkIn.toISOString().split('T')[0],
+                            checkOutDate: checkOut.toISOString().split('T')[0]
+                        });
                     });
                 });
             });
@@ -446,20 +469,7 @@
             const contentSection = document.createElement('section');
             contentSection.id = option.id;
             contentSection.className = 'hidden';
-            let currentDate = new Date('2025-11-13T12:00:00Z');
-            const cityDates = {};
-            option.flow.forEach(step => {
-                const checkIn = new Date(currentDate);
-                currentDate.setDate(currentDate.getDate() + step.nights);
-                const dateString = `${checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-                if (!cityDates[step.city]) cityDates[step.city] = [];
-                cityDates[step.city].push(dateString);
-            });
-            option.plans.forEach(plan => {
-                plan.hotelDetails.forEach(hotelDetail => {
-                    if (cityDates[hotelDetail.location]) { hotelDetail.dates = cityDates[hotelDetail.location].join(' & '); }
-                });
-            });
+
             let flowHtml = option.flow.map((step, i) => {
                 const tokyoReturnTransport = { method: 'Shinkansen', details: 'Tokaido Line', duration: '~2.5 hrs' };
                 const currentCityData = cityData[step.city];
@@ -468,7 +478,39 @@
                 const cityHtml = `<div class="flex flex-col items-center text-center p-2 rounded-lg bg-zinc-900/50"><div class="text-lg font-semibold text-purple-400">${step.city}</div><div class="text-sm text-zinc-400">${step.nights} Night${step.nights > 1 ? 's' : ''}</div><div class="text-xs text-zinc-500 mt-1">🌡️ ${currentCityData.avgTemp}</div>${step.label ? `<div class="text-xs font-bold text-zinc-200 mt-1">${step.label}</div>` : ''}</div>`;
                 return transportHtml + cityHtml;
             }).join('');
-            let plansHtml = option.plans.map(plan => `<div class="hotel-plan-card rounded-xl p-6 flex flex-col transition-all duration-300 shadow-lg" data-total-cost="${plan.totalCost}"><h3 class="text-2xl font-bold text-center mb-4 ${plan.name === 'Splurge' ? 'text-fuchsia-400' : plan.name === 'Mid-Range' ? 'text-amber-400' : 'text-emerald-400'}">${plan.name}</h3><ul class="space-y-4 mb-6 flex-grow">${plan.hotelDetails.map(hotel => { const hotelInfo = hotelDescriptions[hotel.name] || { description: 'A highly-rated hotel.', source: 'General' }; return `<li class="flex flex-col"><div class="flex justify-between items-baseline"><span class="font-semibold text-zinc-300">${hotel.location}</span><span class="text-xs text-zinc-500 font-mono">${hotel.dates || ''}</span></div><div class="flex justify-between items-baseline mt-1"><span class="text-zinc-400 text-sm flex items-center gap-2">${hotel.name}<div class="relative group"><span class="info-icon cursor-help text-purple-400 text-xs font-bold">ⓘ</span><div class="absolute bottom-full mb-2 w-60 p-3 text-sm font-normal text-zinc-200 bg-zinc-800 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none -translate-x-1/2 left-1/2 border border-zinc-600"><p>${hotelInfo.description}</p><p class="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500">Source: ${hotelInfo.source}</p></div></div>${hotel.fhr ? '<span class="text-purple-400 font-bold" title="American Express Fine Hotels + Resorts">★ FHR</span>' : ''}</span><span class="text-zinc-400 text-sm font-semibold">$${hotel.cost.toLocaleString()}</span></div></li>` }).join('')}</ul><div class="text-center mt-auto pt-4 border-t border-zinc-700"><p class="text-sm text-zinc-500">Estimated Total</p><p class="text-3xl font-bold text-white">$${plan.totalCost.toLocaleString()}</p></div></div>`).join('');
+
+            let plansHtml = option.plans.map(plan => {
+                const hotelsHtml = plan.hotelDetails.map(hotel => {
+                    const hotelInfo = hotelDescriptions[hotel.name] || { description: 'A highly-rated hotel.', source: 'General' };
+                    const bookingUrl = `https://www.google.com/travel/hotels/search?q=${encodeURIComponent(hotel.name + ', ' + hotel.location.split(' ')[0])}&checkin=${hotel.checkInDate}&checkout=${hotel.checkOutDate}&adults=2`;
+                    const bookButton = hotel.fhr ? `<a href="${bookingUrl}" target="_blank" class="book-button text-xs font-semibold px-3 py-1 mt-2 rounded-md">Check Prices on Google</a>` : '';
+                    
+                    return `<li class="flex flex-col border-b border-zinc-800 last:border-b-0 py-4">
+                                <div class="flex justify-between items-baseline">
+                                    <span class="font-semibold text-zinc-300">${hotel.location}</span>
+                                    <span class="text-xs text-zinc-500 font-mono">${hotel.dates || ''}</span>
+                                </div>
+                                <div class="flex justify-between items-baseline mt-1">
+                                    <span class="text-zinc-400 text-sm flex items-center gap-2">${hotel.name}
+                                        <div class="relative group"><span class="info-icon cursor-help text-purple-400 text-xs font-bold">ⓘ</span><div class="absolute bottom-full mb-2 w-60 p-3 text-sm font-normal text-zinc-200 bg-zinc-800 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none -translate-x-1/2 left-1/2 border border-zinc-600"><p>${hotelInfo.description}</p><p class="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500">Source: ${hotelInfo.source}</p></div></div>
+                                        ${hotel.fhr ? '<span class="text-purple-400 font-bold" title="American Express Fine Hotels + Resorts">★ FHR</span>' : ''}
+                                    </span>
+                                    <span class="text-zinc-400 text-sm font-semibold">$${hotel.cost.toLocaleString()}</span>
+                                </div>
+                                ${bookButton ? `<div class="mt-2">${bookButton}</div>` : ''}
+                            </li>`;
+                }).join('');
+
+                return `<div class="hotel-plan-card rounded-xl p-6 flex flex-col transition-all duration-300 shadow-lg" data-total-cost="${plan.totalCost}">
+                            <h3 class="text-2xl font-bold text-center mb-4 ${plan.name === 'Splurge' ? 'text-fuchsia-400' : plan.name === 'Mid-Range' ? 'text-amber-400' : 'text-emerald-400'}">${plan.name}</h3>
+                            <ul class="space-y-0 mb-6 flex-grow">${hotelsHtml}</ul>
+                            <div class="text-center mt-auto pt-4 border-t border-zinc-700">
+                                <p class="text-sm text-zinc-500">Estimated Total</p>
+                                <p class="text-3xl font-bold text-white">$${plan.totalCost.toLocaleString()}</p>
+                            </div>
+                        </div>`;
+            }).join('');
+
             contentSection.innerHTML = `<div class="mb-8 p-4 main-card rounded-xl"><h2 class="text-2xl font-bold text-center text-white mb-4">Trip Flow: ${option.title}</h2><div class="flex items-stretch justify-center flex-wrap">${flowHtml}</div></div><div class="main-card rounded-xl p-4 mb-8"><div class="chart-container"><canvas id="chart-${option.id}"></canvas></div></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">${plansHtml}</div>`;
             return contentSection;
         }
