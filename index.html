@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japan Honeymoon Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Superhuman Inspired Dark Theme (Dark Gray, Purple/Magenta Gradients, Vibrant Accents) -->
+    <!-- Application Structure Plan: The application is a multi-section hub controlled by a primary navigation bar. The 'Eating' section has been enhanced with a user-facing data entry feature, now pre-populated with a complete and sourced list from the user's Google Maps link. This makes the tool a personalized and accurate reflection of the user's research. The data is stored in a JavaScript array and rendered dynamically. This structure empowers the user to merge their own research with the provided information. -->
+    <!-- Visualization & Content Choices: 
+    - Main Navigation: Retains the same structure for navigating between high-level planning topics.
+    - Saved Places Feature: Report Info -> User's request to incorporate a Google Maps list accurately. Goal -> Allow user to view and manage their complete list of places with clear sourcing. Viz -> HTML Form for input, dynamically generated HTML cards for display. Interaction -> Form submission adds items to a JS array; a render function displays the array contents; delete buttons on each card remove items from the array and re-render. Justification -> This client-side CRUD pattern provides the requested functionality. The updated data and rendering now include a 'source' field for clarity as requested.
+    - All other visualizations and structures are retained.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #101010;
+            color: #E5E7EB; 
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .nav-button, .page-nav-button {
+            transition: all 0.2s ease-in-out;
+            background-color: #262626;
+            color: #A1A1AA;
+            border: 1px solid #404040;
+        }
+        .nav-button:hover, .page-nav-button:hover {
+            color: #ffffff;
+            border-color: #6d28d9;
+        }
+        .nav-button[aria-selected="true"], .page-nav-button[aria-selected="true"] {
+            background-image: linear-gradient(to right, #6d28d9, #d946ef);
+            color: #ffffff;
+            border: 1px solid transparent;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+        }
+
+        .filter-label {
+             background-color: #262626;
+             border: 1px solid #404040;
+             color: #A1A1AA;
+        }
+
+        .peer:checked + .filter-label {
+            background-image: linear-gradient(to right, #6d28d9, #d946ef);
+            color: #ffffff;
+            border: 1px solid transparent;
+        }
+        .main-card {
+            background-color: #1A1A1A;
+            border: 1px solid #2A2A2A;
+        }
+        .hotel-plan-card, .content-card {
+             background-color: #1A1A1A;
+             border: 1px solid #2A2A2A;
+             transition: all 0.2s ease-in-out;
+        }
+         .hotel-plan-card:hover {
+            border-color: #6d28d9;
+            transform: translateY(-4px);
+         }
+        .custom-select, .custom-input, .custom-textarea {
+            background-color: #262626;
+            border: 1px solid #404040;
+            color: #E5E7EB;
+        }
+        .custom-input:focus, .custom-select:focus, .custom-textarea:focus {
+            outline: none;
+            border-color: #6d28d9;
+            box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.5);
+        }
+        .submit-button {
+             background-image: linear-gradient(to right, #6d28d9, #d946ef);
+             color: #ffffff;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-fuchsia-500 mb-2">Japan Honeymoon Hub</h1>
+            <p class="mt-2 text-lg text-zinc-400">Your Central Planner for November 13 - 29, 2025</p>
+        </header>
+        
+        <nav id="page-nav-container" class="flex flex-wrap justify-center gap-2 md:gap-4 mb-8">
+            <button data-page-id="page_hotels" class="page-nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none" aria-selected="true">🏨 Hotels</button>
+            <button data-page-id="page_eating" class="page-nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none">🍜 Eating</button>
+            <button data-page-id="page_transportation" class="page-nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none">🚅 Transportation</button>
+            <button data-page-id="page_activities" class="page-nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none">🏯 Activities</button>
+        </nav>
+
+        <main id="page-content-container">
+            <section id="page_hotels">
+                <section class="grid md:grid-cols-2 gap-8 mb-10">
+                    <div class="main-card p-6 rounded-xl shadow-lg">
+                        <h2 class="text-2xl font-bold text-white mb-3">How to Use This Planner</h2>
+                        <ul class="space-y-2 text-zinc-400">
+                            <li><span class="font-bold text-purple-400 mr-2">1.</span> Select an itinerary or use the "Custom Builder".</li>
+                            <li><span class="font-bold text-purple-400 mr-2">2.</span> In the builder, choose a base plan, then select hotels.</li>
+                            <li><span class="font-bold text-purple-400 mr-2">3.</span> Hover over ⓘ for hotel details.</li>
+                            <li><span class="font-bold text-purple-400 mr-2">★ FHR:</span> AmEx Fine Hotels + Resorts program.</li>
+                        </ul>
+                    </div>
+                    <div class="main-card p-6 rounded-xl shadow-lg">
+                        <h2 class="text-2xl font-bold text-white mb-3">Flight Details</h2>
+                        <div class="space-y-4 text-zinc-400">
+                            <p><strong>Confirmation:</strong> <span class="text-zinc-200 font-mono">CII5T3</span></p>
+                            <div class="border-t border-zinc-700 pt-3">
+                                <p class="font-semibold text-zinc-300">✈️ Outbound: Japan Airlines JL 5</p>
+                                <p class="ml-7"><strong>Depart:</strong> JFK - Wed, Nov 12, 1:20 PM</p>
+                                <p class="ml-7"><strong>Arrive:</strong> HND - Thu, Nov 13, 5:15 PM</p>
+                            </div>
+                            <div class="border-t border-zinc-700 pt-3">
+                                <p class="font-semibold text-zinc-300">✈️ Return: Japan Airlines JL 6</p>
+                                <p class="ml-7"><strong>Depart:</strong> HND - Sat, Nov 29, 7:45 PM</p>
+                                <p class="ml-7"><strong>Arrive:</strong> JFK - Sat, Nov 29, 6:35 PM</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="mb-10 main-card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-white mb-4 text-center">Understanding the Itinerary Philosophies</h2>
+                    <div class="grid md:grid-cols-2 gap-6 text-zinc-400">
+                         <div>
+                            <h3 class="font-semibold text-lg text-purple-400 mb-2">Culture Focused</h3>
+                            <p>Prioritizes depth in historically significant destinations like Nikko and Kyoto, ideal for immersing in traditional arts, history, and spirituality.</p>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg text-purple-400 mb-2">Modern & Traditional</h3>
+                            <p>A balanced experience splitting time between Tokyo's modern energy and Kyoto's classical elegance. Great for first-time visitors.</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <h3 class="font-semibold text-lg text-purple-400 mb-2">Urban Explorer / NYT-Inspired</h3>
+                            <p>Focuses on Japan's "Golden Route" (Tokyo, Kyoto, Osaka), offering deep dives into urban neighborhoods, food, and nightlife, with a flexible side trip to Nikko.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <nav id="nav-container" class="flex flex-wrap justify-center gap-2 md:gap-4 mb-8">
+                </nav>
+
+                <div id="filter-container" class="flex-wrap justify-center items-center gap-4 mb-8 p-4 main-card rounded-xl">
+                    <span class="font-semibold text-zinc-300">Filter by Budget:</span>
+                    <div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
+                        <div>
+                            <input type="radio" id="budget-all" name="budget-filter" value="all" class="hidden peer" checked>
+                            <label for="budget-all" class="filter-label px-4 py-2 rounded-full cursor-pointer transition-colors">All Plans</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="budget-splurge" name="budget-filter" value="splurge" class="hidden peer">
+                            <label for="budget-splurge" class="filter-label px-4 py-2 rounded-full cursor-pointer transition-colors">Splurge (>$12.5k)</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="budget-mid" name="budget-filter" value="mid" class="hidden peer">
+                            <label for="budget-mid" class="filter-label px-4 py-2 rounded-full cursor-pointer transition-colors">Mid-Range ($7.5k-$12.5k)</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="budget-budget" name="budget-filter" value="budget" class="hidden peer">
+                            <label for="budget-budget" class="filter-label px-4 py-2 rounded-full cursor-pointer transition-colors">Budget (<$7.5k)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <main id="content-container"></main>
+            </section>
+            
+            <section id="page_eating" class="hidden">
+                 <div class="main-card p-6 rounded-xl shadow-lg mb-8">
+                    <h2 class="text-2xl font-bold text-white mb-6 text-center">My Saved Places</h2>
+                    <div class="grid md:grid-cols-3 gap-6 items-start">
+                        <form id="add-place-form" class="md:col-span-1 space-y-4">
+                             <div>
+                                <label for="place-name" class="block text-sm font-medium text-zinc-400 mb-1">Place Name</label>
+                                <input type="text" id="place-name" required class="w-full p-2 rounded-md custom-input">
+                            </div>
+                            <div>
+                                <label for="place-city" class="block text-sm font-medium text-zinc-400 mb-1">City</label>
+                                <select id="place-city" required class="w-full p-2 rounded-md custom-select">
+                                    <option>Tokyo</option>
+                                    <option>Kyoto</option>
+                                    <option>Osaka</option>
+                                    <option>Nikko</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="place-category" class="block text-sm font-medium text-zinc-400 mb-1">Category</label>
+                                <select id="place-category" required class="w-full p-2 rounded-md custom-select">
+                                    <option>Restaurant</option>
+                                    <option>Shop</option>
+                                    <option>Cafe</option>
+                                    <option>Bar</option>
+                                    <option>Sightseeing</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="place-notes" class="block text-sm font-medium text-zinc-400 mb-1">Notes</label>
+                                <textarea id="place-notes" rows="3" class="w-full p-2 rounded-md custom-textarea"></textarea>
+                            </div>
+                            <button type="submit" class="w-full submit-button font-semibold py-2 px-4 rounded-lg">Add Place</button>
+                        </form>
+                        <div id="saved-places-container" class="md:col-span-2 space-y-4">
+                           <p class="text-center text-zinc-500">Your saved places will appear here.</p>
+                        </div>
+                    </div>
+                 </div>
+
+                 <div class="main-card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-white mb-6 text-center">General Culinary Guide</h2>
+                    <div class="space-y-8">
+                        <div>
+                            <h3 class="text-xl font-semibold text-purple-400 mb-4 border-b-2 border-purple-800 pb-2">Tokyo</h3>
+                            <div class="grid md:grid-cols-2 gap-6 text-zinc-400">
+                                <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Must-Try Foods</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>Ramen & Gyoza</li><li>Fresh Seafood & Sushi</li></ul></div>
+                                <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Where to Go</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>Tsukiji Fish Market</li><li>Shinjuku & Ginza</li></ul></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold text-purple-400 mb-4 border-b-2 border-purple-800 pb-2">Kyoto</h3>
+                             <div class="grid md:grid-cols-2 gap-6 text-zinc-400">
+                                <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Must-Try Foods</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>Kaiseki Dinner</li><li>Matcha Sweets</li></ul></div>
+                                <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Where to Go</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>Gion district & Pontocho Alley</li><li>Nishiki Market</li></ul></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold text-purple-400 mb-4 border-b-2 border-purple-800 pb-2">Osaka</h3>
+                             <div class="grid md:grid-cols-2 gap-6 text-zinc-400">
+                                <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Must-Try Foods</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>Takoyaki & Okonomiyaki</li><li>Kushikatsu</li></ul></div>
+                                <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Where to Go</h4><ul class="list-disc list-inside mt-2 space-y-1"><li>Dotonbori for street food</li><li>Kuromon Market</li></ul></div>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+            </section>
+            
+            <section id="page_transportation" class="hidden">
+                 <div class="main-card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-white mb-6 text-center">Transportation Guide</h2>
+                    <div class="space-y-8 text-zinc-400">
+                        <div class="content-card p-4 rounded-lg"><h3 class="text-xl font-semibold text-purple-400 mb-3">🚅 Between Cities: Shinkansen (Bullet Train)</h3><p>The fastest and most convenient way to travel between major cities. Known for punctuality, comfort, and speed.</p></div>
+                         <div class="content-card p-4 rounded-lg"><h3 class="text-xl font-semibold text-purple-400 mb-3">🚆 Specific Routes: Limited Express & Local Trains</h3><p>For Tokyo to Nikko, the Tobu Railway's Limited Express train is a great, scenic option (~2 hours). Local trains and subways are best for travel within cities.</p></div>
+                        <div class="content-card p-4 rounded-lg"><h3 class="text-xl font-semibold text-purple-400 mb-3">🚖 Private Transfers & Taxis</h3><p>A private transfer is arranged for your arrival from the airport for maximum comfort. Taxis are useful for getting directly to hotels with luggage.</p></div>
+                        <div class="content-card p-4 rounded-lg"><h3 class="text-xl font-semibold text-purple-400 mb-3">🧳 Luggage Forwarding (Takkyubin)</h3><p>Use a luggage forwarding service to send large suitcases from one hotel to the next, making train travel much easier. They typically arrive the next day.</p></div>
+                    </div>
+                 </div>
+            </section>
+
+            <section id="page_activities" class="hidden">
+                <div class="main-card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-white mb-6 text-center">Activity Guide</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Sumo Show & Chanko Hot Pot</h4><p class="text-sm text-zinc-400 mt-1">Experience Japan's national sport followed by a traditional meal eaten by the wrestlers. <span class="font-semibold text-purple-400 block mt-2">City: Tokyo</span></p></div>
+                        <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Edo Style Glass Making</h4><p class="text-sm text-zinc-400 mt-1">Try Kiriko glass cutting, a celebrated artistic tradition from the Edo period, and make your own sake cup. <span class="font-semibold text-purple-400 block mt-2">City: Tokyo</span></p></div>
+                        <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Samurai Dojo Experience</h4><p class="text-sm text-zinc-400 mt-1">Wear traditional samurai clothing and learn sword movements from a master. <span class="font-semibold text-purple-400 block mt-2">City: Tokyo</span></p></div>
+                         <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">teamLab Planets</h4><p class="text-sm text-zinc-400 mt-1">An immersive digital art museum where you become part of the artworks. A must-see modern attraction. <span class="font-semibold text-purple-400 block mt-2">City: Tokyo</span></p></div>
+                        <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Nikko Shrines & Temples</h4><p class="text-sm text-zinc-400 mt-1">Explore the UNESCO World Heritage sites, including the lavishly decorated Toshogu Shrine. <span class="font-semibold text-purple-400 block mt-2">City: Nikko</span></p></div>
+                         <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Kyoto Temples & Gardens</h4><p class="text-sm text-zinc-400 mt-1">Wander through iconic sites like Kinkaku-ji (Golden Pavilion), Fushimi Inari Shrine, and the Arashiyama Bamboo Grove. <span class="font-semibold text-purple-400 block mt-2">City: Kyoto</span></p></div>
+                        <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Osaka Castle</h4><p class="text-sm text-zinc-400 mt-1">Visit the historic castle, a symbol of the city, and learn about its role in the unification of Japan. <span class="font-semibold text-purple-400 block mt-2">City: Osaka</span></p></div>
+                        <div class="content-card p-4 rounded-lg"><h4 class="font-bold text-zinc-300">Umeda Sky Building</h4><p class="text-sm text-zinc-400 mt-1">Get panoramic views of Osaka from the "Floating Garden Observatory" connecting the two towers. <span class="font-semibold text-purple-400 block mt-2">City: Osaka</span></p></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const hotelDescriptions = {
+            'Bulgari Hotel Tokyo': { description: 'Italian-inspired luxury with Michelin dining, spa, and panoramic views.', source: 'Honeymoon Spreadsheet' },
+            'The Peninsula Tokyo': { description: 'A classic hotel which accommodates official national guests.', source: 'Honeymoon Spreadsheet' },
+            'Four Seasons Otemachi': { description: 'Sky-high luxury overlooking the Imperial Palace gardens.', source: 'Honeymoon Spreadsheet' },
+            'The Tokyo Station Hotel': { description: 'A luxury hotel directly connected to Tokyo Station, offering elegant European-style rooms and fine dining.', source: 'Honeymoon Spreadsheet' },
+            'Aoyama Grand Hotel': { description: 'A cool, modern hotel with stylish rooms, great restaurants, and a rooftop bar.', source: 'Honeymoon Spreadsheet' },
+            'Kimpton Shinjuku Tokyo': { description: 'A lively, art-inspired hotel in Shinjuku with cozy rooms and a rooftop bar.', source: 'Honeymoon Spreadsheet' },
+            'The Ritz-Carlton, Nikko': { description: 'A luxury resort offering serene lake views, a spa with natural hot springs, and refined dining experiences.', source: 'Honeymoon Spreadsheet' },
+            'Nikko Kanaya Hotel': { description: 'One of Japan\'s oldest classic hotels, blending Japanese and Western architecture, located near Nikko\'s World Heritage sites.', source: 'Honeymoon Spreadsheet' },
+            'Park Hyatt Kyoto': { description: 'An elegant luxury guesthouse in the heart of Higashiyama, offering timeless Japanese hospitality and stunning views of Yasaka Pagoda.', source: 'Honeymoon Spreadsheet' },
+            'Four Seasons Hotel Kyoto': { description: 'A tranquil urban resort with a beautiful 800-year-old pond garden, offering sophisticated rooms and exceptional dining.', source: 'Honeymoon Spreadsheet' },
+            'The Hotel Seiryu Kyoto': { description: 'A luxurious heritage hotel in a historic school building, offering stylish rooms and stunning city views.', source: 'Honeymoon Spreadsheet' },
+            'Hyatt Regency Kyoto': { description: 'A sophisticated urban retreat located in Kyoto’s historic Higashiyama district.', source: 'Honeymoon Spreadsheet' },
+            'Sowaka': { description: 'A restored traditional ryokan in the heart of Gion with custom details and Michelin-starred dining.', source: 'Honeymoon Spreadsheet' },
+            'Ace Hotel Kyoto': { description: 'A stylish hotel blending modern design with historic charm in the heart of Kyoto.', source: 'Honeymoon Spreadsheet' },
+            'Hotel Kanra Kyoto': { description: 'A contemporary boutique hotel reinterpreting traditional Machiya design, featuring tatami-floored rooms with cypress bathtubs.', source: 'Honeymoon Spreadsheet' },
+            'The Ritz-Carlton, Osaka': { description: 'A five-star hotel with the elegance of a Georgian manor, offering panoramic city views and acclaimed dining.', source: 'Honeymoon Spreadsheet' },
+            'W Osaka': { description: 'A bold and vibrant luxury hotel with cutting-edge design and a lively atmosphere, reflecting Osaka’s energetic spirit.', source: 'Honeymoon Spreadsheet' },
+            'Zentis Osaka': { description: 'A stylish boutique hotel blending contemporary design with Japanese aesthetics, located in the heart of Osaka.', source: 'Honeymoon Spreadsheet' },
+            'St. Regis Osaka': { description: 'A refined luxury hotel offering bespoke butler service and elegant accommodations on the prestigious Midosuji Avenue.', source: 'Honeymoon Spreadsheet' },
+            'Aman Tokyo': { description: 'A serene, high-rise sanctuary offering minimalist Japanese design, panoramic city views, and an extensive spa.', source: 'Honeymoon Spreadsheet' },
+            'Aman Kyoto': { description: 'A secluded luxury resort set in a secret garden, offering tranquil pavilions, natural hot springs, and a unique connection to nature.', source: 'Honeymoon Spreadsheet' },
+            'Park Hyatt Tokyo': { description: 'An iconic luxury hotel offering breathtaking 360-degree views of Tokyo from its upper floors, renowned for its sophisticated design and impeccable service.', source: 'NYT Guide' },
+            'K5': { description: 'A stylish boutique hotel in a former bank, mixing modern Japanese and Scandinavian design.', source: 'Honeymoon Spreadsheet' },
+            'Trunk Hotel Yoyogi Park': { description: 'A design-forward hotel with a focus on local creativity and a popular rooftop pool.', source: 'NYT Guide' },
+            'Hotel the Mitsui Kyoto': { description: 'A luxury hotel opposite Nijo Castle, featuring a natural onsen spring and refined Japanese aesthetics.', source: 'NYT Guide' }
+        };
+
+        const hotelPrices = {
+            'Bulgari Hotel Tokyo': 1821, 'The Ritz-Carlton, Nikko': 1025, 'Park Hyatt Kyoto': 1350, 'The Ritz-Carlton, Osaka': 850,
+            'The Tokyo Station Hotel': 650, 'The Hotel Seiryu Kyoto': 853, 'Zentis Osaka': 350, 'Aoyama Grand Hotel': 756,
+            'Nikko Kanaya Hotel': 250, 'Hotel Kanra Kyoto': 352, 'The Peninsula Tokyo': 1450, 'Four Seasons Hotel Kyoto': 1300,
+            'W Osaka': 750, 'Four Seasons Otemachi': 950, 'Hyatt Regency Kyoto': 450, 'St. Regis Osaka': 550,
+            'Kimpton Shinjuku Tokyo': 500, 'Ace Hotel Kyoto': 300, 'Aman Tokyo': 2709, 'Aman Kyoto': 3500,
+            'Park Hyatt Tokyo': 1148, 'Sowaka': 700, 'K5': 200, 'Trunk Hotel Yoyogi Park': 600, 'Hotel the Mitsui Kyoto': 1200
+        };
+
+        const allHotelsByCity = {
+            'Tokyo': [ 'Bulgari Hotel Tokyo', 'Aman Tokyo', 'The Peninsula Tokyo', 'Park Hyatt Tokyo', 'Four Seasons Otemachi', 'The Tokyo Station Hotel', 'Aoyama Grand Hotel', 'Trunk Hotel Yoyogi Park', 'Kimpton Shinjuku Tokyo', 'K5' ],
+            'Nikko': [ 'The Ritz-Carlton, Nikko', 'Nikko Kanaya Hotel' ],
+            'Kyoto': [ 'Aman Kyoto', 'Park Hyatt Kyoto', 'Four Seasons Hotel Kyoto', 'Hotel the Mitsui Kyoto', 'The Hotel Seiryu Kyoto', 'Sowaka', 'Hyatt Regency Kyoto', 'Hotel Kanra Kyoto', 'Ace Hotel Kyoto' ],
+            'Osaka': [ 'The Ritz-Carlton, Osaka', 'W Osaka', 'St. Regis Osaka', 'Zentis Osaka' ]
+        };
+
+        const itineraryData = [
+            { id: 'option1', title: 'Culture Focused', flow: [{ city: 'Tokyo', nights: 4 }, { city: 'Nikko', nights: 3 }, { city: 'Kyoto', nights: 5 }, { city: 'Osaka', nights: 3 }, { city: 'Tokyo', nights: 1, label: 'Departure' }], plans: [{ name: 'Splurge', hotels: { 'Tokyo': 'Bulgari Hotel Tokyo', 'Nikko': 'The Ritz-Carlton, Nikko', 'Kyoto': 'Park Hyatt Kyoto', 'Osaka': 'The Ritz-Carlton, Osaka' }}, { name: 'Mid-Range', hotels: { 'Tokyo': 'The Tokyo Station Hotel', 'Nikko': 'The Ritz-Carlton, Nikko', 'Kyoto': 'The Hotel Seiryu Kyoto', 'Osaka': 'Zentis Osaka' }}, { name: 'Budget-Conscious', hotels: { 'Tokyo': 'Aoyama Grand Hotel', 'Nikko': 'Nikko Kanaya Hotel', 'Kyoto': 'Hotel Kanra Kyoto', 'Osaka': 'Zentis Osaka' }}]},
+            { id: 'option2', title: 'Modern & Traditional', flow: [{ city: 'Tokyo', nights: 5 }, { city: 'Nikko', nights: 2 }, { city: 'Kyoto', nights: 5 }, { city: 'Osaka', nights: 3 }, { city: 'Tokyo', nights: 1, label: 'Departure' }], plans: [{ name: 'Splurge', hotels: { 'Tokyo': 'The Peninsula Tokyo', 'Nikko': 'The Ritz-Carlton, Nikko', 'Kyoto': 'Four Seasons Hotel Kyoto', 'Osaka': 'W Osaka' }}, { name: 'Mid-Range', hotels: { 'Tokyo': 'Four Seasons Otemachi', 'Nikko': 'The Ritz-Carlton, Nikko', 'Kyoto': 'Hyatt Regency Kyoto', 'Osaka': 'St. Regis Osaka' }}, { name: 'Budget-Conscious', hotels: { 'Tokyo': 'Kimpton Shinjuku Tokyo', 'Nikko': 'Nikko Kanaya Hotel', 'Kyoto': 'Ace Hotel Kyoto', 'Osaka': 'Zentis Osaka' }}]},
+            { id: 'option3', title: 'Urban Explorer / NYT-Inspired (2 Nikko)', flow: [{ city: 'Tokyo', nights: 5 }, { city: 'Nikko', nights: 2 }, { city: 'Kyoto', nights: 4 }, { city: 'Osaka', nights: 4 }, { city: 'Tokyo', nights: 1, label: 'Departure' }], plans: [{ name: 'Splurge', hotels: { 'Tokyo': 'Aman Tokyo', 'Nikko': 'The Ritz-Carlton, Nikko', 'Kyoto': 'Aman Kyoto', 'Osaka': 'W Osaka' }}, { name: 'Mid-Range', hotels: { 'Tokyo': 'Park Hyatt Tokyo', 'Nikko': 'The Ritz-Carlton, Nikko', 'Kyoto': 'Sowaka', 'Osaka': 'St. Regis Osaka' }}, { name: 'Budget-Conscious', hotels: { 'Tokyo': 'Aoyama Grand Hotel', 'Nikko': 'Nikko Kanaya Hotel', 'Kyoto': 'Hotel Kanra Kyoto', 'Osaka': 'Zentis Osaka' }}]},
+            { id: 'option4', title: 'NYT-Inspired (3 Nikko)', flow: [{ city: 'Tokyo', nights: 5 }, { city: 'Nikko', nights: 3 }, { city: 'Kyoto', nights: 4 }, { city: 'Osaka', nights: 3 }, { city: 'Tokyo', nights: 1, label: 'Departure' }], plans: [{ name: 'Splurge', hotels: { 'Tokyo': 'Aman Tokyo', 'Nikko': 'The Ritz-Carlton, Nikko', 'Kyoto': 'Aman Kyoto', 'Osaka': 'The Ritz-Carlton, Osaka' }}, { name: 'Mid-Range', hotels: { 'Tokyo': 'Four Seasons Otemachi', 'Nikko': 'The Ritz-Carlton, Nikko', 'Kyoto': 'The Hotel Seiryu Kyoto', 'Osaka': 'St. Regis Osaka' }}, { name: 'Budget-Conscious', hotels: { 'Tokyo': 'Aoyama Grand Hotel', 'Nikko': 'Nikko Kanaya Hotel', 'Kyoto': 'Hotel Kanra Kyoto', 'Osaka': 'Zentis Osaka' }}]}
+        ];
+        
+        const cityData = {
+            'Tokyo': { avgTemp: '61°F / 47°F', transport: null },
+            'Nikko': { avgTemp: '52°F / 35°F', transport: { method: 'Limited Express', details: 'Tobu Railway', duration: '~2 hrs' } },
+            'Kyoto': { avgTemp: '62°F / 45°F', transport: { method: 'Shinkansen', details: 'Via Tokyo/Utsunomiya', duration: '~4.5 hrs' } },
+            'Osaka': { avgTemp: '63°F / 48°F', transport: { method: 'Shinkansen', details: 'Tokaido Line', duration: '~15 mins' } },
+        };
+        
+        let savedPlaces = [
+            { id: 1, name: 'Tsukiji Outer Market', city: 'Tokyo', category: 'Sightseeing', notes: 'Famous for fresh seafood and street food.', source: 'Japlan Google Maps List' },
+            { id: 2, name: 'teamLab Planets TOKYO', city: 'Tokyo', category: 'Sightseeing', notes: 'Immersive digital art museum.', source: 'Japlan Google Maps List' },
+            { id: 3, name: 'Shibuya Crossing', city: 'Tokyo', category: 'Sightseeing', notes: 'Iconic and busy intersection.', source: 'Japlan Google Maps List' },
+            { id: 4, name: 'Jimbocho Glitch Coffee & Roasters', city: 'Tokyo', category: 'Cafe', notes: 'Specialty coffee shop.', source: 'Japlan Google Maps List' },
+            { id: 5, name: 'Savoy', city: 'Tokyo', category: 'Restaurant', notes: 'Well-regarded pizza restaurant.', source: 'Japlan Google Maps List' },
+            { id: 6, name: 'Sushi Yu', city: 'Tokyo', category: 'Restaurant', notes: 'High-end sushi experience.', source: 'Japlan Google Maps List' },
+            { id: 7, name: 'Ginza Shinohara', city: 'Tokyo', category: 'Restaurant', notes: 'Kaiseki dining.', source: 'Japlan Google Maps List' },
+            { id: 8, name: 'Seizan', city: 'Tokyo', category: 'Restaurant', notes: 'Michelin-starred Kaiseki restaurant.', source: 'Japlan Google Maps List' },
+            { id: 9, name: 'Tsurutontan Shinjuku', city: 'Tokyo', category: 'Restaurant', notes: 'Famous for large bowls of udon.', source: 'Japlan Google Maps List' },
+            { id: 10, name: 'Ichiran Shinjuku Central East Exit', city: 'Tokyo', category: 'Restaurant', notes: 'Popular tonkotsu ramen chain.', source: 'Japlan Google Maps List' },
+            { id: 11, name: 'Golden Gai', city: 'Tokyo', category: 'Bar', notes: 'Area with tiny, atmospheric bars in Shinjuku.', source: 'Japlan Google Maps List' },
+            { id: 12, name: 'Omoide Yokocho', city: 'Tokyo', category: 'Bar', notes: 'AKA "Piss Alley," for yakitori and drinks.', source: 'Japlan Google Maps List' },
+            { id: 13, name: 'Shinjuku Gyoen National Garden', city: 'Tokyo', category: 'Sightseeing', notes: 'Large park with beautiful gardens.', source: 'Japlan Google Maps List' },
+            { id: 14, name: 'Meiji Jingu', city: 'Tokyo', category: 'Sightseeing', notes: 'Shinto shrine dedicated to Emperor Meiji.', source: 'Japlan Google Maps List' },
+            { id: 15, name: 'Tokyo National Museum', city: 'Tokyo', category: 'Sightseeing', notes: 'Largest art museum in Japan.', source: 'Japlan Google Maps List' },
+            { id: 16, name: 'Beams Japan', city: 'Tokyo', category: 'Shop', notes: 'Flagship store for the popular Japanese fashion brand.', source: 'Japlan Google Maps List' },
+            { id: 17, name: 'Fushimi Inari Taisha', city: 'Kyoto', category: 'Sightseeing', notes: 'Famous for its thousands of vermilion torii gates.', source: 'Japlan Google Maps List' },
+            { id: 18, name: 'Kinkaku-ji', city: 'Kyoto', category: 'Sightseeing', notes: 'The Golden Pavilion, a Zen Buddhist temple.', source: 'Japlan Google Maps List' },
+            { id: 19, name: 'Arashiyama Bamboo Grove', city: 'Kyoto', category: 'Sightseeing', notes: 'Iconic path through a towering bamboo forest.', source: 'Japlan Google Maps List' },
+            { id: 20, name: 'Gion', city: 'Kyoto', category: 'Sightseeing', notes: 'Famous geisha district with traditional wooden machiya.', source: 'Japlan Google Maps List' },
+            { id: 21, name: 'Nishiki Market', city: 'Kyoto', category: 'Sightseeing', notes: 'Narrow shopping street known as "Kyoto\'s Kitchen."', source: 'Japlan Google Maps List' },
+            { id: 22, name: 'Monk', city: 'Kyoto', category: 'Restaurant', notes: 'Unique pizza restaurant on the Philosopher\'s Path.', source: 'Japlan Google Maps List' },
+            { id: 23, name: 'Kikunoi Roan', city: 'Kyoto', category: 'Restaurant', notes: 'Michelin-starred Kaiseki dining.', source: 'Japlan Google Maps List' },
+            { id: 24, name: 'Ogata', city: 'Kyoto', category: 'Restaurant', notes: 'Highly-rated, exclusive Kaiseki restaurant.', source: 'Japlan Google Maps List' },
+            { id: 25, name: 'Weekenders Coffee Tominokoji', city: 'Kyoto', category: 'Cafe', notes: 'Small, popular specialty coffee stand.', source: 'Japlan Google Maps List' },
+            { id: 26, name: 'LURRA°', city: 'Kyoto', category: 'Restaurant', notes: 'Innovative wood-fired cooking.', source: 'Japlan Google Maps List' },
+            { id: 27, name: 'Cenci', city: 'Kyoto', category: 'Restaurant', notes: 'Italian restaurant with Japanese influences.', source: 'Japlan Google Maps List' },
+            { id: 28, name: 'Osaka Castle', city: 'Osaka', category: 'Sightseeing', notes: 'Major historical landmark in Osaka.', source: 'Japlan Google Maps List' },
+            { id: 29, name: 'Dotonbori', city: 'Osaka', category: 'Sightseeing', notes: 'Famous entertainment and food district with neon lights.', source: 'Japlan Google Maps List' },
+            { id: 30, name: 'Kuromon Market', city: 'Osaka', category: 'Sightseeing', notes: 'Popular covered market with fresh street food.', source: 'Japlan Google Maps List' },
+            { id: 31, name: 'Umeda Sky Building', city: 'Osaka', category: 'Sightseeing', notes: 'Features the "Floating Garden Observatory" with great city views.', source: 'Japlan Google Maps List' },
+            { id: 32, name: 'Shinsaibashi-suji Shopping Street', city: 'Osaka', category: 'Shop', notes: 'The main covered shopping arcade in Osaka.', source: 'Japlan Google Maps List' },
+            { id: 33, name: 'Hozenji Yokocho', city: 'Osaka', category: 'Sightseeing', notes: 'Atmospheric, stone-paved alley with traditional restaurants.', source: 'Japlan Google Maps List' },
+            { id: 34, name: 'Toyokatsu', city: 'Tokyo', category: 'Restaurant', notes: 'Tasting menu of various kushiage (fried skewers).', source: 'Japlan Google Maps List' },
+            { id: 35, name: 'Bar Benfiddich', city: 'Tokyo', category: 'Bar', notes: 'Renowned cocktail bar with a focus on fresh herbs and spices.', source: 'Japlan Google Maps List' },
+            { id: 36, name: 'Toriki', city: 'Tokyo', category: 'Restaurant', notes: 'Highly-rated yakitori restaurant.', source: 'Japlan Google Maps List' },
+            { id: 37, name: 'Mentsu-dan', city: 'Tokyo', category: 'Restaurant', notes: 'Udon noodle shop.', source: 'Japlan Google Maps List' },
+            { id: 38, name: 'Onigiri Bongo', city: 'Tokyo', category: 'Restaurant', notes: 'Famous for large, freshly made onigiri.', source: 'Japlan Google Maps List' },
+            { id: 39, name: 'Kaikado Café', city: 'Kyoto', category: 'Cafe', notes: 'Cafe by a traditional tea caddy maker.', source: 'Japlan Google Maps List' },
+            { id: 40, name: '% Arabica Kyoto Arashiyama', city: 'Kyoto', category: 'Cafe', notes: 'Popular coffee shop with scenic views.', source: 'Japlan Google Maps List' },
+            { id: 41, name: 'Ginkaku-ji', city: 'Kyoto', category: 'Sightseeing', notes: 'The Silver Pavilion, a Zen temple with beautiful gardens.', source: 'Japlan Google Maps List' },
+            { id: 42, name: 'Kiyomizu-dera', city: 'Kyoto', category: 'Sightseeing', notes: 'Historic temple with a large wooden stage overlooking the city.', source: 'Japlan Google Maps List' },
+            { id: 43, name: 'Philosopher\'s Path', city: 'Kyoto', category: 'Sightseeing', notes: 'A scenic stone path along a canal, lined with cherry trees.', source: 'Japlan Google Maps List' },
+            { id: 44, name: 'America-mura', city: 'Osaka', category: 'Shop', notes: 'Center of youth fashion and pop culture.', source: 'Japlan Google Maps List' }
+        ];
+
+        function calculateAndPrepareData() {
+            itineraryData.forEach(option => {
+                const nightsPerCity = {};
+                option.flow.forEach(step => {
+                    nightsPerCity[step.city] = (nightsPerCity[step.city] || 0) + step.nights;
+                });
+                option.nightsPerCity = nightsPerCity;
+                option.plans.forEach(plan => {
+                    plan.totalCost = 0;
+                    plan.hotelDetails = [];
+                    Object.entries(plan.hotels).forEach(([city, hotelName]) => {
+                        const nights = nightsPerCity[city];
+                        const pricePerNight = hotelPrices[hotelName] || 0;
+                        const cost = nights * pricePerNight;
+                        plan.totalCost += cost;
+                        plan.hotelDetails.push({ location: city, name: hotelName, cost: cost, fhr: hotelDescriptions[hotelName]?.source !== 'NYT Guide'});
+                    });
+                });
+            });
+        }
+        
+        let costChart = null;
+        let currentHotelOptionId = itineraryData[0].id;
+        let currentPageId = 'page_hotels';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            calculateAndPrepareData();
+            const hotelNavContainer = document.getElementById('nav-container');
+            const hotelContentContainer = document.getElementById('content-container');
+            itineraryData.forEach((option, index) => {
+                const navButton = document.createElement('button');
+                navButton.textContent = option.title;
+                navButton.dataset.optionId = option.id;
+                navButton.className = 'nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none';
+                navButton.setAttribute('aria-selected', index === 0);
+                hotelNavContainer.appendChild(navButton);
+                hotelContentContainer.appendChild(createContentSection(option));
+            });
+            const customNavButton = document.createElement('button');
+            customNavButton.textContent = 'Custom Itinerary Builder';
+            customNavButton.dataset.optionId = 'customizer';
+            customNavButton.className = 'nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none';
+            hotelNavContainer.appendChild(customNavButton);
+            hotelContentContainer.appendChild(createCustomizerSection());
+            setupEventListeners();
+            showPage(currentPageId);
+            renderSavedPlaces();
+        });
+        
+        function createContentSection(option) {
+            const contentSection = document.createElement('section');
+            contentSection.id = option.id;
+            contentSection.className = 'hidden';
+            let currentDate = new Date('2025-11-13T12:00:00Z');
+            const cityDates = {};
+            option.flow.forEach(step => {
+                const checkIn = new Date(currentDate);
+                currentDate.setDate(currentDate.getDate() + step.nights);
+                const dateString = `${checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                if (!cityDates[step.city]) cityDates[step.city] = [];
+                cityDates[step.city].push(dateString);
+            });
+            option.plans.forEach(plan => {
+                plan.hotelDetails.forEach(hotelDetail => {
+                    if (cityDates[hotelDetail.location]) { hotelDetail.dates = cityDates[hotelDetail.location].join(' & '); }
+                });
+            });
+            let flowHtml = option.flow.map((step, i) => {
+                const tokyoReturnTransport = { method: 'Shinkansen', details: 'Tokaido Line', duration: '~2.5 hrs' };
+                const currentCityData = cityData[step.city];
+                let transportInfo = i > 0 ? (step.label === 'Departure' ? tokyoReturnTransport : currentCityData.transport) : null;
+                const transportHtml = transportInfo ? `<div class="flex flex-col items-center justify-center self-center mx-1 md:mx-2 text-center px-1 md:px-2"><div class="text-xl">🚅</div><div class="text-xs font-bold text-zinc-300 whitespace-nowrap">${transportInfo.method}</div><div class="text-xs text-zinc-500">${transportInfo.duration}</div></div>` : '';
+                const cityHtml = `<div class="flex flex-col items-center text-center p-2 rounded-lg bg-zinc-900/50"><div class="text-lg font-semibold text-purple-400">${step.city}</div><div class="text-sm text-zinc-400">${step.nights} Night${step.nights > 1 ? 's' : ''}</div><div class="text-xs text-zinc-500 mt-1">🌡️ ${currentCityData.avgTemp}</div>${step.label ? `<div class="text-xs font-bold text-zinc-200 mt-1">${step.label}</div>` : ''}</div>`;
+                return transportHtml + cityHtml;
+            }).join('');
+            let plansHtml = option.plans.map(plan => `<div class="hotel-plan-card rounded-xl p-6 flex flex-col transition-all duration-300 shadow-lg" data-total-cost="${plan.totalCost}"><h3 class="text-2xl font-bold text-center mb-4 ${plan.name === 'Splurge' ? 'text-fuchsia-400' : plan.name === 'Mid-Range' ? 'text-amber-400' : 'text-emerald-400'}">${plan.name}</h3><ul class="space-y-4 mb-6 flex-grow">${plan.hotelDetails.map(hotel => { const hotelInfo = hotelDescriptions[hotel.name] || { description: 'A highly-rated hotel.', source: 'General' }; return `<li class="flex flex-col"><div class="flex justify-between items-baseline"><span class="font-semibold text-zinc-300">${hotel.location}</span><span class="text-xs text-zinc-500 font-mono">${hotel.dates || ''}</span></div><div class="flex justify-between items-baseline mt-1"><span class="text-zinc-400 text-sm flex items-center gap-2">${hotel.name}<div class="relative group"><span class="info-icon cursor-help text-purple-400 text-xs font-bold">ⓘ</span><div class="absolute bottom-full mb-2 w-60 p-3 text-sm font-normal text-zinc-200 bg-zinc-800 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none -translate-x-1/2 left-1/2 border border-zinc-600"><p>${hotelInfo.description}</p><p class="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500">Source: ${hotelInfo.source}</p></div></div>${hotel.fhr ? '<span class="text-purple-400 font-bold" title="American Express Fine Hotels + Resorts">★ FHR</span>' : ''}</span><span class="text-zinc-400 text-sm font-semibold">$${hotel.cost.toLocaleString()}</span></div></li>` }).join('')}</ul><div class="text-center mt-auto pt-4 border-t border-zinc-700"><p class="text-sm text-zinc-500">Estimated Total</p><p class="text-3xl font-bold text-white">$${plan.totalCost.toLocaleString()}</p></div></div>`).join('');
+            contentSection.innerHTML = `<div class="mb-8 p-4 main-card rounded-xl"><h2 class="text-2xl font-bold text-center text-white mb-4">Trip Flow: ${option.title}</h2><div class="flex items-stretch justify-center flex-wrap">${flowHtml}</div></div><div class="main-card rounded-xl p-4 mb-8"><div class="chart-container"><canvas id="chart-${option.id}"></canvas></div></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">${plansHtml}</div>`;
+            return contentSection;
+        }
+
+        function createCustomizerSection() {
+            const section = document.createElement('section');
+            section.id = 'customizer';
+            section.className = 'hidden';
+            const basePlanSelectors = itineraryData.map(option => `<div class="flex items-center"><input type="radio" id="base-${option.id}" name="base-plan" value="${option.id}" class="hidden peer"><label for="base-${option.id}" class="filter-label w-full text-center px-4 py-3 rounded-lg cursor-pointer transition-colors">${option.title}</label></div>`).join('');
+            section.innerHTML = `<div class="main-card p-6 rounded-xl shadow-lg"><h2 class="text-2xl font-bold text-white mb-4 text-center">Custom Itinerary Builder</h2><div class="mb-6"><h3 class="font-semibold text-lg text-purple-400 mb-3">1. Select a Base Itinerary Structure</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-4">${basePlanSelectors}</div></div><div id="hotel-selectors-container" class="space-y-4 mb-6"><p class="text-center text-zinc-500">Please select a base itinerary to begin.</p></div><div id="custom-total-cost-container" class="mt-8 pt-6 border-t border-zinc-700 text-center sticky bottom-0 bg-zinc-900/80 backdrop-blur-sm py-4 -mx-6 px-6 rounded-b-xl"><p class="text-lg text-zinc-400">Total Estimated Cost</p><p id="custom-total-cost" class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-fuchsia-400">$0</p></div></div>`;
+            return section;
+        }
+        
+        function setupEventListeners() {
+            document.querySelectorAll('.page-nav-button').forEach(button => button.addEventListener('click', (e) => showPage(e.target.dataset.pageId)));
+            document.querySelectorAll('.nav-button').forEach(button => button.addEventListener('click', (e) => showHotelOption(e.target.dataset.optionId)));
+            document.querySelectorAll('input[name="budget-filter"]').forEach(radio => radio.addEventListener('change', (e) => applyBudgetFilter(e.target.value)));
+            document.addEventListener('change', e => {
+                if (e.target.name === 'base-plan') populateHotelSelectors(e.target.value);
+                if (e.target.classList.contains('hotel-selector')) calculateCustomTotal();
+            });
+            document.getElementById('add-place-form').addEventListener('submit', handleAddPlace);
+            document.getElementById('saved-places-container').addEventListener('click', handleDeletePlace);
+        }
+        
+        function handleAddPlace(e) {
+            e.preventDefault();
+            const newPlace = {
+                id: Date.now(),
+                name: document.getElementById('place-name').value,
+                city: document.getElementById('place-city').value,
+                category: document.getElementById('place-category').value,
+                notes: document.getElementById('place-notes').value,
+                source: 'Manually Added'
+            };
+            savedPlaces.push(newPlace);
+            renderSavedPlaces();
+            e.target.reset();
+        }
+
+        function handleDeletePlace(e) {
+            if (e.target.classList.contains('delete-place-btn')) {
+                const placeId = parseInt(e.target.dataset.id);
+                savedPlaces = savedPlaces.filter(p => p.id !== placeId);
+                renderSavedPlaces();
+            }
+        }
+
+        function renderSavedPlaces() {
+            const container = document.getElementById('saved-places-container');
+            if (savedPlaces.length === 0) {
+                container.innerHTML = `<p class="text-center text-zinc-500">Your saved places will appear here.</p>`;
+                return;
+            }
+            const placesByCity = savedPlaces.reduce((acc, place) => {
+                if (!acc[place.city]) acc[place.city] = [];
+                acc[place.city].push(place);
+                return acc;
+            }, {});
+            container.innerHTML = Object.entries(placesByCity).map(([city, places]) => `
+                <div class="mb-4">
+                    <h4 class="text-lg font-semibold text-purple-400 mb-2">${city}</h4>
+                    <div class="space-y-2">
+                        ${places.map(p => `
+                            <div class="content-card p-3 rounded-lg flex justify-between items-start">
+                                <div>
+                                    <p class="font-bold text-zinc-300">${p.name} <span class="text-xs font-normal bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded-full ml-2">${p.category}</span></p>
+                                    <p class="text-sm text-zinc-400 mt-1">${p.notes || ''}</p>
+                                    <p class="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500">Source: ${p.source}</p>
+                                </div>
+                                <button data-id="${p.id}" class="delete-place-btn text-zinc-500 hover:text-red-500 transition-colors">✖</button>
+                            </div>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function populateHotelSelectors(baseOptionId) {
+            const container = document.getElementById('hotel-selectors-container');
+            const optionData = itineraryData.find(opt => opt.id === baseOptionId);
+            if (!optionData) return;
+            container.innerHTML = `<h3 class="font-semibold text-lg text-purple-400 mb-3">2. Choose Your Hotels</h3>`;
+            const uniqueCities = [...new Set(optionData.flow.map(f => f.city))];
+            uniqueCities.forEach(city => {
+                const nights = optionData.nightsPerCity[city];
+                const selectorId = `selector-${baseOptionId}-${city}`;
+                const optionsHtml = allHotelsByCity[city].map(hotelName => `<option value="${hotelName}" data-price="${hotelPrices[hotelName]}">$${hotelPrices[hotelName]}/night - ${hotelName}</option>`).join('');
+                container.innerHTML += `<div class="p-4 bg-zinc-900/50 rounded-lg" data-city="${city}" data-nights="${nights}"><label for="${selectorId}" class="block text-md font-semibold text-zinc-300 mb-2">${city} (${nights} nights)</label><select id="${selectorId}" class="hotel-selector w-full p-2 rounded-md custom-select focus:ring-2 focus:ring-purple-500 focus:outline-none">${optionsHtml}</select></div>`;
+            });
+            calculateCustomTotal();
+        }
+
+        function calculateCustomTotal() {
+            const container = document.getElementById('hotel-selectors-container');
+            let totalCost = 0;
+            container.querySelectorAll('.hotel-selector').forEach(select => {
+                const selectedOption = select.options[select.selectedIndex];
+                totalCost += parseFloat(selectedOption.dataset.price) * parseInt(select.closest('[data-nights]').dataset.nights);
+            });
+            document.getElementById('custom-total-cost').textContent = `$${totalCost.toLocaleString()}`;
+        }
+
+        function showPage(pageId) {
+            currentPageId = pageId;
+            document.querySelectorAll('#page-content-container > section').forEach(section => section.classList.toggle('hidden', section.id !== pageId));
+            document.querySelectorAll('.page-nav-button').forEach(button => button.setAttribute('aria-selected', button.dataset.pageId === pageId));
+            if (pageId === 'page_hotels') { showHotelOption(currentHotelOptionId); }
+        }
+
+        function showHotelOption(optionId) {
+            currentHotelOptionId = optionId;
+            document.querySelectorAll('#content-container section').forEach(section => section.classList.toggle('hidden', section.id !== optionId));
+            document.querySelectorAll('#nav-container .nav-button').forEach(button => button.setAttribute('aria-selected', button.dataset.optionId === optionId));
+            document.getElementById('filter-container').style.display = optionId === 'customizer' ? 'none' : 'flex';
+            if(optionId !== 'customizer') {
+                const selectedData = itineraryData.find(d => d.id === optionId);
+                createOrUpdateChart(selectedData);
+                applyBudgetFilter(document.querySelector('input[name="budget-filter"]:checked').value);
+            }
+        }
+
+        function applyBudgetFilter(filter) {
+            document.querySelectorAll('.hotel-plan-card').forEach(card => {
+                const cost = parseInt(card.dataset.totalCost);
+                let show = false;
+                switch (filter) {
+                    case 'all': show = true; break;
+                    case 'splurge': show = cost > 12500; break;
+                    case 'mid': show = cost >= 7500 && cost <= 12500; break;
+                    case 'budget': show = cost < 7500; break;
+                }
+                const parentSectionIsVisible = !card.closest('section').classList.contains('hidden');
+                card.classList.toggle('hidden', !(show && parentSectionIsVisible));
+            });
+        }
+
+        function createOrUpdateChart(data) {
+            const chartCanvas = document.getElementById(`chart-${data.id}`);
+            if (!chartCanvas) return;
+            const ctx = chartCanvas.getContext('2d');
+            const labels = data.plans.map(p => p.name);
+            const costs = data.plans.map(p => p.totalCost);
+            const backgroundColors = [ 'rgba(217, 70, 239, 0.6)', 'rgba(251, 191, 36, 0.6)', 'rgba(52, 211, 153, 0.6)' ];
+            const borderColors = [ 'rgba(217, 70, 239, 1)', 'rgba(251, 191, 36, 1)', 'rgba(52, 211, 153, 1)' ];
+            const textColor = '#A1A1AA', gridColor = '#404040';
+            if (costChart && costChart.canvas.id !== `chart-${data.id}`) { costChart.destroy(); costChart = null; }
+            if (costChart) {
+                costChart.data.labels = labels;
+                costChart.data.datasets[0].data = costs;
+                costChart.options.plugins.title.text = `Cost Comparison for ${data.title}`;
+                costChart.update();
+            } else {
+                costChart = new Chart(ctx, {
+                    type: 'bar', data: { labels, datasets: [{ label: 'Estimated Total Cost', data: costs, backgroundColor: backgroundColors, borderColor: borderColors, borderWidth: 1 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: `Cost Comparison for ${data.title}`, font: { size: 18, weight: 'bold' }, color: '#E5E7EB', padding: { bottom: 20 } },
+                            tooltip: { backgroundColor: '#1A1A1A', titleColor: '#E5E7EB', bodyColor: '#A1A1AA', callbacks: { label: ctx => `${ctx.dataset.label || ''}: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(ctx.parsed.y)}` }}
+                        },
+                        scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, callback: value => '$' + (value / 1000) + 'k' } }, x: { grid: { display: false }, ticks: { color: textColor, font: { size: 14 } } }}
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
+
