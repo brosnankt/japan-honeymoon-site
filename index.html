@@ -10,11 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Superhuman Inspired Dark Theme (Dark Gray, Purple/Magenta Gradients, Vibrant Accents) -->
-    <!-- Application Structure Plan: The application is a multi-section hub. The key update is replacing the non-functional Amex Travel links with robust Google Hotels search links for FHR properties. This maintains the actionable nature of the planner while significantly improving reliability. The links are dynamically generated using pre-calculated dates and hotel names to provide a seamless user experience from planning to the booking research phase. -->
+    <!-- Application Structure Plan: The application structure remains a five-section hub. This update introduces a significant enhancement to the "Custom Itinerary Builder" on the "Hotels" page: a "Split Stay" option for Tokyo. This adds conditional UI elements (a checkbox and secondary hotel selector) and adjusts the cost calculation logic, making the planner more powerful and flexible for users who want to experience multiple accommodations in Tokyo. -->
     <!-- Visualization & Content Choices: 
-    - Main Navigation: Retains the same structure for navigating between high-level planning topics.
-    - Booking Links: Report Info -> User's request to fix broken booking links with a Google Hotels alternative. Goal -> Provide a reliable, one-click path to research and book hotels for specific dates. Viz/Method -> Dynamically generated `<a>` tags styled as buttons, now pointing to a Google Hotels search URL. Interaction -> Clicking opens a new tab with pre-filled search parameters (hotel name, check-in/out dates). Justification -> This directly addresses the user's issue, replacing a broken feature with a superior, more stable alternative.
-    - All other visualizations and structures are retained.
+    - Custom Itinerary Builder (Split Stay Feature): Report Info -> User wants to select two different hotels for their Tokyo stay. Goal -> Allow users to split their Tokyo lodging and see the real-time cost impact. Viz/Method -> A checkbox is added to the Tokyo hotel selection area. When checked, the single dropdown is replaced with two, with the total nights split between them. Interaction -> Toggling the checkbox dynamically changes the UI. Selecting hotels in either of the two dropdowns updates the total cost. Justification -> This directly implements a complex user request, providing a high degree of customization and planning flexibility.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
@@ -69,7 +67,7 @@
             background-color: #1A1A1A;
             border: 1px solid #2A2A2A;
         }
-        .hotel-plan-card, .content-card {
+        .hotel-plan-card, .content-card, .note-card {
              background-color: #1A1A1A;
              border: 1px solid #2A2A2A;
              transition: all 0.2s ease-in-out;
@@ -105,6 +103,31 @@
             border-color: #6d28d9;
             background-color: #6d28d9;
         }
+        .custom-checkbox {
+            appearance: none;
+            background-color: #404040;
+            border: 1px solid #52525B;
+            width: 1.25em;
+            height: 1.25em;
+            border-radius: 0.25rem;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        .custom-checkbox:checked {
+            background-image: linear-gradient(to right, #6d28d9, #d946ef);
+            border-color: #a855f7;
+        }
+        .custom-checkbox:checked::after {
+            content: '✔';
+            font-size: 0.8em;
+            color: white;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
     </style>
 </head>
 <body class="bg-stone-50 text-stone-800">
@@ -120,6 +143,7 @@
             <button data-page-id="page_eating" class="page-nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none">🍜 Eating</button>
             <button data-page-id="page_transportation" class="page-nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none">🚅 Transportation</button>
             <button data-page-id="page_activities" class="page-nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none">🏯 Activities</button>
+            <button data-page-id="page_notes" class="page-nav-button px-4 py-2 md:px-6 md:py-3 font-semibold rounded-lg shadow-sm focus:outline-none">📝 Notes</button>
         </nav>
 
         <main id="page-content-container">
@@ -294,6 +318,36 @@
                     </div>
                 </div>
             </section>
+            
+            <section id="page_notes" class="hidden">
+                <div class="main-card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-white mb-6 text-center">Trip Notes & Resources</h2>
+                    <div class="grid md:grid-cols-3 gap-8 items-start">
+                        <form id="add-note-form" class="md:col-span-1 space-y-4">
+                             <div>
+                                <label for="note-title" class="block text-sm font-medium text-zinc-400 mb-1">Title</label>
+                                <input type="text" id="note-title" required class="w-full p-2 rounded-md custom-input">
+                            </div>
+                            <div>
+                                <label for="note-date" class="block text-sm font-medium text-zinc-400 mb-1">Date</label>
+                                <input type="date" id="note-date" required class="w-full p-2 rounded-md custom-input">
+                            </div>
+                            <div>
+                                <label for="note-tags" class="block text-sm font-medium text-zinc-400 mb-1">Labels (comma-separated)</label>
+                                <input type="text" id="note-tags" class="w-full p-2 rounded-md custom-input" placeholder="e.g. Articles, Tips">
+                            </div>
+                            <div>
+                                <label for="note-content" class="block text-sm font-medium text-zinc-400 mb-1">Content / URL</label>
+                                <textarea id="note-content" rows="4" class="w-full p-2 rounded-md custom-textarea"></textarea>
+                            </div>
+                            <button type="submit" class="w-full submit-button font-semibold py-2 px-4 rounded-lg">Save Note</button>
+                        </form>
+                        <div id="notes-container" class="md:col-span-2 space-y-4">
+                           <p class="text-center text-zinc-500">Your saved notes will appear here.</p>
+                        </div>
+                    </div>
+                 </div>
+            </section>
         </main>
     </div>
 
@@ -323,7 +377,34 @@
             'Park Hyatt Tokyo': { description: 'An iconic luxury hotel offering breathtaking 360-degree views of Tokyo from its upper floors, renowned for its sophisticated design and impeccable service.', source: 'NYT Guide' },
             'K5': { description: 'A stylish boutique hotel in a former bank, mixing modern Japanese and Scandinavian design.', source: 'Honeymoon Spreadsheet' },
             'Trunk Hotel Yoyogi Park': { description: 'A design-forward hotel with a focus on local creativity and a popular rooftop pool.', source: 'NYT Guide' },
-            'Hotel the Mitsui Kyoto': { description: 'A luxury hotel opposite Nijo Castle, featuring a natural onsen spring and refined Japanese aesthetics.', source: 'NYT Guide' }
+            'Hotel the Mitsui Kyoto': { description: 'A luxury hotel opposite Nijo Castle, featuring a natural onsen spring and refined Japanese aesthetics.', source: 'NYT Guide' },
+            'Mandarin Oriental, Tokyo': { description: 'Soaring luxury in Nihonbashi with acclaimed dining and sweeping city views from every room.', source: 'Condé Nast Traveler' },
+            'The Tokyo EDITION, Toranomon': { description: 'A skyscraper hotel designed by Ian Schrager with a jungle-like lobby and stunning Tokyo Tower views.', source: 'Condé Nast Traveler' },
+            'Four Seasons Hotel Tokyo at Marunouchi': { description: 'An intimate, boutique-style Four Seasons outpost next to Tokyo Station, known for its personalized service.', source: 'Condé Nast Traveler' },
+            'Imperial Hotel, Tokyo': { description: 'A legendary hotel with over 130 years of history, known for its timeless grandeur and impeccable service.', source: 'Condé Nast Traveler' },
+            'The Ritz-Carlton, Tokyo': { description: 'Occupying the top floors of the Midtown Tower in Roppongi, this hotel offers spectacular views and luxurious comfort.', source: 'Condé Nast Traveler' },
+            'HOSHINOYA Tokyo': { description: 'A luxury ryokan in a skyscraper, combining traditional Japanese hospitality with modern design and an open-air onsen.', source: 'Condé Nast Traveler' },
+            'The Capitol Hotel Tokyu': { description: 'A sophisticated hotel with a mid-century modern design by Kengo Kuma, adjacent to the Prime Minister\'s residence.', source: 'Condé Nast Traveler' },
+            'Andaz Tokyo Toranomon Hills': { description: 'A stylish hotel on the top floors of Toranomon Hills Mori Tower with a stunning rooftop bar and panoramic views.', source: 'Condé Nast Traveler' },
+            'Hotel Gajoen Tokyo': { description: 'A "museum hotel" filled with Japanese art, lush gardens, and Showa-era design details.', source: 'Condé Nast Traveler' },
+            'The Okura Tokyo': { description: 'A legendary hotel reborn, blending classic mid-century Japanese design with modern luxury.', source: 'Condé Nast Traveler' },
+            'Shangri-La Tokyo': { description: 'Luxurious and opulent hotel next to Tokyo Station with panoramic views and a focus on grand comfort.', source: 'Condé Nast Traveler' },
+            'Conrad Tokyo': { description: 'A sleek, modern hotel in Shiodome with impressive views of Tokyo Bay and Hamarikyu Gardens.', source: 'Condé Nast Traveler' },
+            'Hotel Indigo Tokyo Shibuya': { description: 'A vibrant, art-filled hotel capturing the energy of Shibuya with stunning views of the Scramble Crossing.', source: 'Condé Nast Traveler' },
+            'Shibuya Stream Excel Hotel Tokyu': { description: 'A modern hotel with a focus on design and creativity, located within the trendy Shibuya Stream complex.', source: 'Condé Nast Traveler' },
+            'all day place shibuya': { description: 'A casual, stylish hotel near Shibuya Park with a focus on local community and a popular pizza restaurant.', source: 'Condé Nast Traveler' },
+            'MIMARU TOKYO GINZA EAST': { description: 'An apartment-style hotel perfect for groups or families, offering spacious rooms with kitchens.', source: 'Condé Nast Traveler' },
+            'toggle hotel suidobashi': { description: 'A fun, colorful hotel where guests can choose their room based on their favorite two-tone color combination.', source: 'Condé Nast Traveler' },
+            'sequence MIYASHITA PARK': { description: 'A hotel located directly within the trendy Miyashita Park complex in Shibuya, offering direct access to shops and culture.', source: 'Condé Nast Traveler' },
+            'ONSEN RYOKAN YUEN SHINJUKU': { description: 'A modern take on a traditional inn, bringing the onsen (hot spring) experience to the heart of Shinjuku.', source: 'Condé Nast Traveler' },
+            'Cyashitsu Ryokan Asakusa': { description: 'A ryokan that embodies the spirit of the tea ceremony, offering minimalist design and a focus on tranquility.', source: 'Condé Nast Traveler' },
+            'MUJI HOTEL GINZA': { description: 'The ultimate experience for fans of the minimalist brand, with rooms entirely outfitted in Muji products.', source: 'Condé Nast Traveler' },
+            'TRUNK(HOTEL) CAT STREET': { description: 'A boutique hotel focused on "socializing," with a lively lobby bar and a design rooted in the local Shibuya scene.', source: 'Condé Nast Traveler' },
+            'BnA WALL': { description: 'An art hotel where each room is designed by a different local artist, and a portion of the stay supports the artist.', source: 'Condé Nast Traveler' },
+            'The Prince Gallery Tokyo Kioicho': { description: 'A sophisticated high-rise hotel with a contemporary art gallery feel and stunning city views.', source: 'Condé Nast Traveler' },
+            'Hotel New Otani Tokyo EXECUTIVE HOUSE ZEN': { description: 'A luxurious "hotel-in-a-hotel" offering exclusive amenities and a 400-year-old Japanese garden.', source: 'Condé Nast Traveler' },
+            'Bellustar Tokyo, A Pan Pacific Hotel': { description: 'Located in the new Tokyu Kabukicho Tower, this hotel offers sky-high luxury and dramatic views over Shinjuku.', source: 'Condé Nast Traveler' },
+            'Hotel Groove Shinjuku, A Parkroyal Hotel': { description: 'A lifestyle hotel in the Tokyu Kabukicho Tower that channels the artistic and musical energy of Shinjuku.', source: 'Condé Nast Traveler' }
         };
 
         const hotelPrices = {
@@ -332,11 +413,28 @@
             'Nikko Kanaya Hotel': 250, 'Hotel Kanra Kyoto': 352, 'The Peninsula Tokyo': 1450, 'Four Seasons Hotel Kyoto': 1300,
             'W Osaka': 750, 'Four Seasons Otemachi': 950, 'Hyatt Regency Kyoto': 450, 'St. Regis Osaka': 550,
             'Kimpton Shinjuku Tokyo': 500, 'Ace Hotel Kyoto': 300, 'Aman Tokyo': 2709, 'Aman Kyoto': 3500,
-            'Park Hyatt Tokyo': 1148, 'Sowaka': 700, 'K5': 200, 'Trunk Hotel Yoyogi Park': 600, 'Hotel the Mitsui Kyoto': 1200
+            'Park Hyatt Tokyo': 1148, 'Sowaka': 700, 'K5': 200, 'Trunk Hotel Yoyogi Park': 600, 'Hotel the Mitsui Kyoto': 1200,
+            'Mandarin Oriental, Tokyo': 1300, 'The Tokyo EDITION, Toranomon': 1100, 'Four Seasons Hotel Tokyo at Marunouchi': 900,
+            'Imperial Hotel, Tokyo': 750, 'The Ritz-Carlton, Tokyo': 1200, 'HOSHINOYA Tokyo': 1000, 'The Capitol Hotel Tokyu': 700,
+            'Andaz Tokyo Toranomon Hills': 850, 'Hotel Gajoen Tokyo': 600, 'The Okura Tokyo': 800, 'Shangri-La Tokyo': 1150,
+            'Conrad Tokyo': 800, 'Hotel Indigo Tokyo Shibuya': 450, 'Shibuya Stream Excel Hotel Tokyu': 350,
+            'all day place shibuya': 300, 'MIMARU TOKYO GINZA EAST': 250, 'toggle hotel suidobashi': 150,
+            'sequence MIYASHITA PARK': 300, 'ONSEN RYOKAN YUEN SHINJUKU': 280, 'Cyashitsu Ryokan Asakusa': 400,
+            'MUJI HOTEL GINZA': 320, 'TRUNK(HOTEL) CAT STREET': 550, 'BnA WALL': 250, 'The Prince Gallery Tokyo Kioicho': 950,
+            'Hotel New Otani Tokyo EXECUTIVE HOUSE ZEN': 700, 'Bellustar Tokyo, A Pan Pacific Hotel': 1050, 'Hotel Groove Shinjuku, A Parkroyal Hotel': 400
         };
 
         const allHotelsByCity = {
-            'Tokyo': [ 'Bulgari Hotel Tokyo', 'Aman Tokyo', 'The Peninsula Tokyo', 'Park Hyatt Tokyo', 'Four Seasons Otemachi', 'The Tokyo Station Hotel', 'Aoyama Grand Hotel', 'Trunk Hotel Yoyogi Park', 'Kimpton Shinjuku Tokyo', 'K5' ],
+            'Tokyo': [
+                'Bulgari Hotel Tokyo', 'Aman Tokyo', 'The Peninsula Tokyo', 'Mandarin Oriental, Tokyo', 'The Ritz-Carlton, Tokyo', 'Park Hyatt Tokyo', 
+                'The Tokyo EDITION, Toranomon', 'Shangri-La Tokyo', 'Bellustar Tokyo, A Pan Pacific Hotel', 'HOSHINOYA Tokyo', 'The Prince Gallery Tokyo Kioicho', 
+                'Four Seasons Otemachi', 'Four Seasons Hotel Tokyo at Marunouchi', 'Andaz Tokyo Toranomon Hills', 'The Okura Tokyo', 'Imperial Hotel, Tokyo', 
+                'Aoyama Grand Hotel', 'The Capitol Hotel Tokyu', 'Hotel New Otani Tokyo EXECUTIVE HOUSE ZEN', 'The Tokyo Station Hotel', 
+                'Trunk Hotel Yoyogi Park', 'Hotel Gajoen Tokyo', 'TRUNK(HOTEL) CAT STREET', 'Kimpton Shinjuku Tokyo', 'Hotel Indigo Tokyo Shibuya',
+                'Hotel Groove Shinjuku, A Parkroyal Hotel', 'Cyashitsu Ryokan Asakusa', 'Shibuya Stream Excel Hotel Tokyu', 'MUJI HOTEL GINZA',
+                'all day place shibuya', 'sequence MIYASHITA PARK', 'ONSEN RYOKAN YUEN SHINJUKU', 'MIMARU TOKYO GINZA EAST', 'BnA WALL', 'K5',
+                'toggle hotel suidobashi'
+            ],
             'Nikko': [ 'The Ritz-Carlton, Nikko', 'Nikko Kanaya Hotel' ],
             'Kyoto': [ 'Aman Kyoto', 'Park Hyatt Kyoto', 'Four Seasons Hotel Kyoto', 'Hotel the Mitsui Kyoto', 'The Hotel Seiryu Kyoto', 'Sowaka', 'Hyatt Regency Kyoto', 'Hotel Kanra Kyoto', 'Ace Hotel Kyoto' ],
             'Osaka': [ 'The Ritz-Carlton, Osaka', 'W Osaka', 'St. Regis Osaka', 'Zentis Osaka' ]
@@ -406,8 +504,16 @@
             { id: 44, name: 'America-mura', city: 'Osaka', category: 'Shop', notes: 'Center of youth fashion and pop culture.', source: 'Japlan Google Maps List' }
         ];
 
+        let savedNotes = [];
+
         function calculateAndPrepareData() {
             itineraryData.forEach(option => {
+                const nightsPerCity = {};
+                option.flow.forEach(step => {
+                    nightsPerCity[step.city] = (nightsPerCity[step.city] || 0) + step.nights;
+                });
+                option.nightsPerCity = nightsPerCity;
+
                 option.plans.forEach(plan => {
                     plan.totalCost = 0;
                     plan.hotelDetails = [];
@@ -463,6 +569,8 @@
             setupEventListeners();
             showPage(currentPageId);
             renderSavedPlaces();
+            renderNotes();
+            document.getElementById('note-date').valueAsDate = new Date();
         });
         
         function createContentSection(option) {
@@ -534,6 +642,8 @@
             });
             document.getElementById('add-place-form').addEventListener('submit', handleAddPlace);
             document.getElementById('saved-places-container').addEventListener('click', handleDeletePlace);
+            document.getElementById('add-note-form').addEventListener('submit', handleAddNote);
+            document.getElementById('notes-container').addEventListener('click', handleDeleteNote);
         }
         
         function handleAddPlace(e) {
@@ -587,28 +697,132 @@
                 </div>
             `).join('');
         }
+        
+        function handleAddNote(e) {
+            e.preventDefault();
+            const newNote = {
+                id: Date.now(),
+                title: document.getElementById('note-title').value,
+                date: document.getElementById('note-date').value,
+                tags: document.getElementById('note-tags').value.split(',').map(tag => tag.trim()).filter(tag => tag),
+                content: document.getElementById('note-content').value
+            };
+            savedNotes.unshift(newNote);
+            renderNotes();
+            e.target.reset();
+            document.getElementById('note-date').valueAsDate = new Date();
+        }
+
+        function handleDeleteNote(e) {
+            if (e.target.classList.contains('delete-note-btn')) {
+                const noteId = parseInt(e.target.dataset.id);
+                savedNotes = savedNotes.filter(n => n.id !== noteId);
+                renderNotes();
+            }
+        }
+
+        function renderNotes() {
+            const container = document.getElementById('notes-container');
+            if (savedNotes.length === 0) {
+                container.innerHTML = `<p class="text-center text-zinc-500">Your saved notes will appear here.</p>`;
+                return;
+            }
+            container.innerHTML = savedNotes.map(n => {
+                const formattedDate = new Date(n.date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                const tagsHtml = n.tags.map(tag => `<span class="text-xs font-semibold bg-zinc-700 text-purple-400 px-2 py-1 rounded-full">${tag}</span>`).join(' ');
+                return `
+                <div class="note-card p-4 rounded-lg">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-zinc-200">${n.title}</h4>
+                            <p class="text-sm text-zinc-500">${formattedDate}</p>
+                        </div>
+                        <button data-id="${n.id}" class="delete-note-btn text-zinc-500 hover:text-red-500 transition-colors">✖</button>
+                    </div>
+                    <p class="text-sm text-zinc-400 my-3 whitespace-pre-wrap">${n.content}</p>
+                    ${tagsHtml ? `<div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-zinc-700">${tagsHtml}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
 
         function populateHotelSelectors(baseOptionId) {
             const container = document.getElementById('hotel-selectors-container');
             const optionData = itineraryData.find(opt => opt.id === baseOptionId);
             if (!optionData) return;
-            container.innerHTML = `<h3 class="font-semibold text-lg text-purple-400 mb-3">2. Choose Your Hotels</h3>`;
-            const uniqueCities = [...new Set(optionData.flow.map(f => f.city))];
+
+            let html = `<h3 class="font-semibold text-lg text-purple-400 mb-3">2. Choose Your Hotels</h3>`;
+            const uniqueCities = [...new Set(optionData.flow.map(step => step.city))];
+
             uniqueCities.forEach(city => {
-                const nights = optionData.nightsPerCity[city];
+                const totalNights = optionData.nightsPerCity[city];
                 const selectorId = `selector-${baseOptionId}-${city}`;
-                const optionsHtml = allHotelsByCity[city].map(hotelName => `<option value="${hotelName}" data-price="${hotelPrices[hotelName]}">$${hotelPrices[hotelName]}/night - ${hotelName}</option>`).join('');
-                container.innerHTML += `<div class="p-4 bg-zinc-900/50 rounded-lg" data-city="${city}" data-nights="${nights}"><label for="${selectorId}" class="block text-md font-semibold text-zinc-300 mb-2">${city} (${nights} nights)</label><select id="${selectorId}" class="hotel-selector w-full p-2 rounded-md custom-select focus:ring-2 focus:ring-purple-500 focus:outline-none">${optionsHtml}</select></div>`;
+                const optionsHtml = allHotelsByCity[city].map(hotelName => `<option value="${hotelName}" data-price="${hotelPrices[hotelName] || 0}">$${hotelPrices[hotelName] || 'N/A'}/night - ${hotelName}</option>`).join('');
+
+                if (city === 'Tokyo' && totalNights > 1) {
+                    html += `
+                        <div class="p-4 bg-zinc-900/50 rounded-lg" data-city="Tokyo">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="block text-md font-semibold text-zinc-300">Tokyo (${totalNights} nights)</span>
+                                <div class="flex items-center gap-2 text-sm text-zinc-300">
+                                    <input type="checkbox" id="split-tokyo-checkbox" class="custom-checkbox">
+                                    <label for="split-tokyo-checkbox">Split Stay?</label>
+                                </div>
+                            </div>
+                            <div id="tokyo-selector-wrapper" data-total-nights="${totalNights}"></div>
+                        </div>`;
+                } else {
+                    html += `<div class="p-4 bg-zinc-900/50 rounded-lg" data-city="${city}" data-nights="${totalNights}"><label for="${selectorId}" class="block text-md font-semibold text-zinc-300 mb-2">${city} (${totalNights} nights)</label><select id="${selectorId}" class="hotel-selector w-full p-2 rounded-md custom-select">${optionsHtml}</select></div>`;
+                }
             });
+            
+            container.innerHTML = html;
+
+            const tokyoWrapper = document.getElementById('tokyo-selector-wrapper');
+            if (tokyoWrapper) {
+                const renderTokyoSelectors = () => {
+                    const isSplit = document.getElementById('split-tokyo-checkbox').checked;
+                    const totalTokyoNights = parseInt(tokyoWrapper.dataset.totalNights);
+                    const optionsHtml = allHotelsByCity['Tokyo'].map(hotelName => `<option value="${hotelName}" data-price="${hotelPrices[hotelName] || 0}">$${hotelPrices[hotelName] || 'N/A'}/night - ${hotelName}</option>`).join('');
+
+                    if (isSplit) {
+                        const nights1 = Math.ceil(totalTokyoNights / 2);
+                        const nights2 = Math.floor(totalTokyoNights / 2);
+                        tokyoWrapper.innerHTML = `
+                            <div data-nights="${nights1}">
+                                <label class="block text-sm font-medium text-zinc-400 mb-1">First Stay (${nights1} nights)</label>
+                                <select class="hotel-selector w-full p-2 rounded-md custom-select">${optionsHtml}</select>
+                            </div>
+                            <div data-nights="${nights2}" class="mt-2">
+                                <label class="block text-sm font-medium text-zinc-400 mb-1">Second Stay (${nights2} nights)</label>
+                                <select class="hotel-selector w-full p-2 rounded-md custom-select">${optionsHtml}</select>
+                            </div>`;
+                    } else {
+                        tokyoWrapper.innerHTML = `
+                            <div data-nights="${totalTokyoNights}">
+                                 <select class="hotel-selector w-full p-2 rounded-md custom-select">${optionsHtml}</select>
+                            </div>`;
+                    }
+                    calculateCustomTotal();
+                };
+
+                document.getElementById('split-tokyo-checkbox').addEventListener('change', renderTokyoSelectors);
+                renderTokyoSelectors();
+            }
+
             calculateCustomTotal();
         }
+
 
         function calculateCustomTotal() {
             const container = document.getElementById('hotel-selectors-container');
             let totalCost = 0;
             container.querySelectorAll('.hotel-selector').forEach(select => {
                 const selectedOption = select.options[select.selectedIndex];
-                totalCost += parseFloat(selectedOption.dataset.price) * parseInt(select.closest('[data-nights]').dataset.nights);
+                const price = parseFloat(selectedOption.dataset.price);
+                const nights = parseInt(select.closest('[data-nights]').dataset.nights);
+                if (!isNaN(price) && !isNaN(nights)) {
+                    totalCost += price * nights;
+                }
             });
             document.getElementById('custom-total-cost').textContent = `$${totalCost.toLocaleString()}`;
         }
